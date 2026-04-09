@@ -25,7 +25,6 @@
         .img-container { width: 100%; height: 100%; }
         #base-image { display: block; max-width: 100%; }
 
-        /* フレーム設定：最初は非表示 (display: none) */
         #overlay-image {
             position: absolute;
             top: 50%;
@@ -35,22 +34,19 @@
             pointer-events: none;
             user-select: none;
             width: 100%;
-            display: none; /* 初期状態は非表示 */
+            display: none;
         }
 
         button { padding: 10px 20px; cursor: pointer; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; }
         
-        /* プライマリボタン（ピンク） */
         .btn-primary { background: #f472b6; color: white; }
         .btn-primary:hover { background: #db2777; }
         
-        /* 保存ボタン（緑） */
         .btn-save { background: #10b981; color: white; display: none; margin-top: 20px; }
         .btn-save:hover { background: #059669; }
 
         input[type="range"] { width: 100%; }
         
-        /* サイズ調整エリア：最初は非表示 */
         #size-controls { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; }
     </style>
 </head>
@@ -93,19 +89,17 @@
     const sizeControls = document.getElementById('size-controls');
     const saveBtn = document.getElementById('save-btn');
 
-    // 背景画像の読み込みとトリミング設定
     document.getElementById('upload-base').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = function(event) {
             baseImg.src = event.target.result;
-            // 新しい画像が読み込まれたら、フレームや保存ボタンを一旦隠す
             overlayImg.style.display = 'none';
             sizeControls.style.display = 'none';
             saveBtn.style.display = 'none';
 
             if (cropper) cropper.destroy();
             cropper = new Cropper(baseImg, {
-                aspectRatio: 1, // 正方形
+                aspectRatio: 1,
                 viewMode: 1,
                 autoCropArea: 1,
                 dragMode: 'move',
@@ -115,54 +109,43 @@
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    // 確定処理 (ここがポイントです)
     document.getElementById('crop-btn').addEventListener('click', function() {
         if (!cropper) return;
         
-        // 背景を正方形(1000x1000)で切り出す
         const canvas = cropper.getCroppedCanvas({ width: 1000, height: 1000 });
-        baseImg.src = canvas.toDataURL(); // 切り出した画像をセット
-        cropper.destroy(); // トリミング機能を終了
+        baseImg.src = canvas.toDataURL();
+        cropper.destroy();
         cropper = null;
-        baseImg.style.width = "100%"; // 画面幅に合わせる
+        baseImg.style.width = "100%";
 
-        // 【追加機能】トリミング確定後にフレームと調整スライダー、保存ボタンを表示
         overlayImg.style.display = 'block';
         sizeControls.style.display = 'block';
         saveBtn.style.display = 'block';
     });
 
-    // フレームのサイズ変更
     sizeSlider.addEventListener('input', function() {
         overlayImg.style.width = this.value + "%";
     });
 
-    // 【追加機能】画像を合成して保存
     saveBtn.addEventListener('click', function() {
         const container = document.getElementById('editor-container');
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
 
-        // 合成用キャンバスのサイズを設定 (1000x1000)
         finalCanvas.width = 1000;
         finalCanvas.height = 1000;
 
-        // 1. 背景画像をCanvasに描画
         const baseImgForCanvas = new Image();
         baseImgForCanvas.src = baseImg.src;
         
         baseImgForCanvas.onload = function() {
             ctx.drawImage(baseImgForCanvas, 0, 0, 1000, 1000);
 
-            // 2. フレーム画像をCanvasに描画
             const frameImgForCanvas = new Image();
             frameImgForCanvas.src = overlayImg.src;
             
             frameImgForCanvas.onload = function() {
-                // スライダーによる現在の拡大率を取得
                 const scale = sizeSlider.value / 100;
-                
-                // 描画サイズと位置の計算 (中央配置)
                 const dw = 1000 * scale;
                 const dh = 1000 * scale;
                 const dx = (1000 - dw) / 2;
@@ -170,16 +153,14 @@
 
                 ctx.drawImage(frameImgForCanvas, dx, dy, dw, dh);
 
-                // 3. ダウンロード用リンクを作成
                 const link = document.createElement('a');
-                link.download = 'ambassador-image.png'; // ファイル名
+                link.download = 'Untitled.png';
                 link.href = finalCanvas.toDataURL('image/png');
                 link.click();
             };
             
-            // フレーム画像の読み込みに失敗した場合（image.png がないなど）
             frameImgForCanvas.onerror = function() {
-                alert('フレーム画像（image.png）の読み込みに失敗しました。リポジトリに画像がアップロードされているか確認してください。');
+                alert('Error: image.png not found.');
             }
         };
     });
