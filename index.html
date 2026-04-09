@@ -6,15 +6,18 @@
     <title>宣伝アンバサダー画像メーカー</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #fdf2f8; margin: 20px; color: #333; }
-        .controls { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; width: 100%; max-width: 600px; }
+        body { font-family: sans-serif; background: #fdf2f8; margin: 0; padding: 20px; color: #333; display: flex; justify-content: center; }
+        .main-wrapper { display: flex; flex-wrap: wrap; gap: 20px; max-width: 1000px; width: 100%; justify-content: center; }
+        .editor-section { flex: 1; min-width: 300px; max-width: 500px; }
+        .info-section { flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); align-self: flex-start; }
+        
+        .controls { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .input-group { margin-bottom: 15px; }
         .slider-label { display: block; margin-top: 10px; font-weight: bold; }
         
         #editor-container {
             position: relative;
             width: 100%;
-            max-width: 500px;
             aspect-ratio: 1 / 1;
             background: #fff;
             overflow: hidden;
@@ -38,46 +41,62 @@
         }
 
         button { padding: 10px 20px; cursor: pointer; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; }
-        
         .btn-primary { background: #f472b6; color: white; }
         .btn-primary:hover { background: #db2777; }
-        
         .btn-save { background: #10b981; color: white; display: none; margin-top: 20px; }
         .btn-save:hover { background: #059669; }
 
         input[type="range"] { width: 100%; }
-        
         #size-controls { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; }
+
+        h3 { margin-top: 0; color: #f472b6; border-bottom: 2px solid #fdf2f8; padding-bottom: 10px; }
+        .usage-list { padding-left: 20px; line-height: 1.6; }
+        .usage-note { font-size: 0.9em; color: #666; margin-left: 1.2em; list-style: none; }
     </style>
 </head>
 <body>
 
-<div class="controls">
-    <h3>宣伝アンバサダー画像作成</h3>
-    
-    <div class="input-group">
-        <label>1. 背景写真を選択: </label>
-        <input type="file" id="upload-base" accept="image/*">
-    </div>
-    
-    <button id="crop-btn" class="btn-primary">2. 背景のトリミングを確定</button>
-
-    <div id="size-controls">
-        <div class="input-group">
-            <span class="slider-label">3. フレームのサイズ調整:</span>
-            <input type="range" id="size-slider" min="50" max="150" value="100">
+<div class="main-wrapper">
+    <div class="editor-section">
+        <div class="controls">
+            <h3>宣伝アンバサダー画像作成</h3>
+            <div class="input-group">
+                <label>1. 背景写真を選択: </label>
+                <input type="file" id="upload-base" accept="image/*">
+            </div>
+            <button id="crop-btn" class="btn-primary">2. 背景のトリミングを確定</button>
+            <div id="size-controls">
+                <div class="input-group">
+                    <span class="slider-label">3. フレームのサイズ調整:</span>
+                    <input type="range" id="size-slider" min="50" max="150" value="100">
+                </div>
+            </div>
         </div>
+
+        <div id="editor-container">
+            <div class="img-container">
+                <img id="base-image" src="" alt="">
+            </div>
+            <img id="overlay-image" src="image.png" alt="frame">
+        </div>
+
+        <button id="save-btn" class="btn-save">画像を保存する</button>
+    </div>
+
+    <div class="info-section">
+        <h3>使い方</h3>
+        <ul class="usage-list">
+            <li>①画像を選びます。</li>
+            <li>②トリミングをします。
+                <li class="usage-note">蓮ノ空のロゴが表示されるので下部は少し余裕を持つといいです。</li>
+            </li>
+            <li>③確定ボタンを押します。</li>
+            <li>④フレームが重なるので画像を保存するボタンを押します。
+                <li class="usage-note">お好みでサイズを変更します。</li>
+            </li>
+        </ul>
     </div>
 </div>
-
-<div id="editor-container">
-    <div class="img-container">
-        <img id="base-image" src="" alt="">
-    </div>
-    <img id="overlay-image" src="image.png" alt="frame">
-</div>
-
-<button id="save-btn" class="btn-save">画像を保存する</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
 
@@ -96,7 +115,6 @@
             overlayImg.style.display = 'none';
             sizeControls.style.display = 'none';
             saveBtn.style.display = 'none';
-
             if (cropper) cropper.destroy();
             cropper = new Cropper(baseImg, {
                 aspectRatio: 1,
@@ -111,13 +129,11 @@
 
     document.getElementById('crop-btn').addEventListener('click', function() {
         if (!cropper) return;
-        
         const canvas = cropper.getCroppedCanvas({ width: 1000, height: 1000 });
         baseImg.src = canvas.toDataURL();
         cropper.destroy();
         cropper = null;
         baseImg.style.width = "100%";
-
         overlayImg.style.display = 'block';
         sizeControls.style.display = 'block';
         saveBtn.style.display = 'block';
@@ -128,37 +144,28 @@
     });
 
     saveBtn.addEventListener('click', function() {
-        const container = document.getElementById('editor-container');
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
-
         finalCanvas.width = 1000;
         finalCanvas.height = 1000;
-
         const baseImgForCanvas = new Image();
         baseImgForCanvas.src = baseImg.src;
-        
         baseImgForCanvas.onload = function() {
             ctx.drawImage(baseImgForCanvas, 0, 0, 1000, 1000);
-
             const frameImgForCanvas = new Image();
             frameImgForCanvas.src = overlayImg.src;
-            
             frameImgForCanvas.onload = function() {
                 const scale = sizeSlider.value / 100;
                 const dw = 1000 * scale;
                 const dh = 1000 * scale;
                 const dx = (1000 - dw) / 2;
                 const dy = (1000 - dh) / 2;
-
                 ctx.drawImage(frameImgForCanvas, dx, dy, dw, dh);
-
                 const link = document.createElement('a');
-                link.download = 'Untitled.png';
+                link.download = 'ambassador-image.png';
                 link.href = finalCanvas.toDataURL('image/png');
                 link.click();
             };
-            
             frameImgForCanvas.onerror = function() {
                 alert('Error: image.png not found.');
             }
