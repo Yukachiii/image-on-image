@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>蓮ノ空 宣伝アンバサダー画像メーカー</title>
+    <title>宣伝アンバサダー画像メーカー</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <style>
         body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #fdf2f8; margin: 20px; color: #333; }
@@ -15,28 +15,25 @@
             position: relative;
             width: 100%;
             max-width: 500px;
-            aspect-ratio: 1 / 1; /* 正方形に固定 */
+            aspect-ratio: 1 / 1;
             background: #fff;
             overflow: hidden;
             border: 4px solid #f472b6;
-            margin-top: 10px;
         }
 
         .img-container { width: 100%; height: 100%; }
         #base-image { display: block; max-width: 100%; }
 
-        /* 固定された2枚目（フレーム） */
+        /* フレーム設定：中央固定・移動不可 */
         #overlay-image {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            cursor: move;
             z-index: 10;
-            pointer-events: auto; /* ドラッグを可能にする */
+            pointer-events: none; /* 下の画像を操作できるように設定 */
             user-select: none;
-            touch-action: none;
-            width: 100%; /* 初期サイズは100% */
+            width: 100%;
         }
 
         button { padding: 10px 20px; cursor: pointer; background: #f472b6; color: white; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; }
@@ -49,15 +46,15 @@
 <div class="controls">
     <h3>宣伝アンバサダー画像作成</h3>
     <div class="input-group">
-        <label>背景にする写真を選択: </label>
+        <label>1. 背景写真を選択: </label>
         <input type="file" id="upload-base" accept="image/*">
     </div>
     
-    <button id="crop-btn">正方形でトリミングを確定</button>
+    <button id="crop-btn">2. 背景のトリミングを確定</button>
 
     <div class="input-group">
-        <span class="slider-label">フレームのサイズ変更:</span>
-        <input type="range" id="size-slider" min="50" max="200" value="100">
+        <span class="slider-label">3. フレームのサイズ調整:</span>
+        <input type="range" id="size-slider" min="50" max="150" value="100">
     </div>
 </div>
 
@@ -65,7 +62,7 @@
     <div class="img-container">
         <img id="base-image" src="" alt="">
     </div>
-    <img id="overlay-image" src="https://r2.community.elemental.video/frames/蓮ノ空宣伝アンバサダーフレーム.png" alt="frame">
+    <img id="overlay-image" src="image.png" alt="frame">
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
@@ -76,86 +73,37 @@
     const overlayImg = document.getElementById('overlay-image');
     const sizeSlider = document.getElementById('size-slider');
 
-    // 2枚目の画像ソース（提供された画像URL）
-    // 注意: GitHub Pagesで表示する場合、CORSの関係で画像が表示されないことがあります。
-    // その場合は、提供された画像をリポジトリに保存し、src="image.jpg" のように書き換えてください。
-    overlayImg.src = "image.png"; // アップロードされた画像を反映
-
-    // 1枚目：読み込みと正方形クロップ起動
+    // 背景画像の読み込みとトリミング設定
     document.getElementById('upload-base').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = function(event) {
             baseImg.src = event.target.result;
             if (cropper) cropper.destroy();
             cropper = new Cropper(baseImg, {
-                aspectRatio: 1, // 正方形固定
+                aspectRatio: 1, // 正方形
                 viewMode: 1,
                 autoCropArea: 1,
-                dragMode: 'move'
+                dragMode: 'move',
+                background: false
             });
         };
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    // 1枚目：トリミング確定
+    // 背景の確定
     document.getElementById('crop-btn').addEventListener('click', function() {
         if (!cropper) return;
-        const canvas = cropper.getCroppedCanvas({ width: 800, height: 800 });
-        const croppedDataUrl = canvas.toDataURL();
+        const canvas = cropper.getCroppedCanvas({ width: 1000, height: 1000 });
+        baseImg.src = canvas.toDataURL();
         cropper.destroy();
         cropper = null;
-        baseImg.src = croppedDataUrl;
         baseImg.style.width = "100%";
     });
 
-    // 2枚目：スライダーによるサイズ変更
+    // フレームのサイズ変更
     sizeSlider.addEventListener('input', function() {
         overlayImg.style.width = this.value + "%";
     });
-
-    // 2枚目：ドラッグ移動処理
-    let isDragging = false;
-    let startX, startY, initialLeft, initialTop;
-
-    overlayImg.addEventListener('mousedown', startDrag);
-    overlayImg.addEventListener('touchstart', startDrag);
-
-    function startDrag(e) {
-        isDragging = true;
-        const event = e.type === 'touchstart' ? e.touches[0] : e;
-        startX = event.clientX;
-        startY = event.clientY;
-        
-        const rect = overlayImg.getBoundingClientRect();
-        const parentRect = document.getElementById('editor-container').getBoundingClientRect();
-        
-        initialLeft = rect.left - parentRect.left;
-        initialTop = rect.top - parentRect.top;
-
-        document.addEventListener('mousemove', doDrag);
-        document.addEventListener('touchmove', doDrag, { passive: false });
-        document.addEventListener('mouseup', stopDrag);
-        document.addEventListener('touchend', stopDrag);
-    }
-
-    function doDrag(e) {
-        if (!isDragging) return;
-        e.preventDefault();
-        const event = e.type === 'touchmove' ? e.touches[0] : e;
-        
-        const dx = event.clientX - startX;
-        const dy = event.clientY - startY;
-        
-        // transform: translate(-50%, -50%) を考慮した移動
-        overlayImg.style.left = (initialLeft + (overlayImg.offsetWidth / 2) + dx) + 'px';
-        overlayImg.style.top = (initialTop + (overlayImg.offsetHeight / 2) + dy) + 'px';
-    }
-
-    function stopDrag() {
-        isDragging = false;
-        document.removeEventListener('mousemove', doDrag);
-        document.removeEventListener('touchmove', doDrag);
-    }
 </script>
 
 </body>
