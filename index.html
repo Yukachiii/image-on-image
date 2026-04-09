@@ -3,62 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Overlay Tool</title>
+    <title>蓮ノ空 宣伝アンバサダー画像メーカー</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #f0f2f5; margin: 20px; }
-        .controls { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; width: 100%; max-width: 600px; }
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #fdf2f8; margin: 20px; color: #333; }
+        .controls { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; width: 100%; max-width: 600px; }
         .input-group { margin-bottom: 15px; }
+        .slider-label { display: block; margin-top: 10px; font-weight: bold; }
         
-        /* 編集エリア */
         #editor-container {
             position: relative;
             width: 100%;
-            max-width: 800px;
-            background: #ddd;
+            max-width: 500px;
+            aspect-ratio: 1 / 1; /* 正方形に固定 */
+            background: #fff;
             overflow: hidden;
-            border: 2px solid #ccc;
+            border: 4px solid #f472b6;
+            margin-top: 10px;
         }
 
-        /* 1枚目（ベース） */
-        .img-container { width: 100%; max-height: 500px; }
-        #base-image { max-width: 100%; display: block; }
+        .img-container { width: 100%; height: 100%; }
+        #base-image { display: block; max-width: 100%; }
 
-        /* 2枚目（オーバーレイ） */
+        /* 固定された2枚目（フレーム） */
         #overlay-image {
             position: absolute;
-            top: 0;
-            left: 0;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             cursor: move;
             z-index: 10;
+            pointer-events: auto; /* ドラッグを可能にする */
             user-select: none;
             touch-action: none;
+            width: 100%; /* 初期サイズは100% */
         }
 
-        button { padding: 8px 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
-        button:hover { background: #0056b3; }
+        button { padding: 10px 20px; cursor: pointer; background: #f472b6; color: white; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; }
+        button:hover { background: #db2777; }
+        input[type="range"] { width: 100%; }
     </style>
 </head>
 <body>
 
 <div class="controls">
-    <h3>画像合成エディタ</h3>
+    <h3>宣伝アンバサダー画像作成</h3>
     <div class="input-group">
-        <label>1枚目 (背景/トリミング可): </label>
+        <label>背景にする写真を選択: </label>
         <input type="file" id="upload-base" accept="image/*">
     </div>
+    
+    <button id="crop-btn">正方形でトリミングを確定</button>
+
     <div class="input-group">
-        <label>2枚目 (重ね用/移動可): </label>
-        <input type="file" id="upload-overlay" accept="image/*">
+        <span class="slider-label">フレームのサイズ変更:</span>
+        <input type="range" id="size-slider" min="50" max="200" value="100">
     </div>
-    <button id="crop-btn">トリミングを確定</button>
 </div>
 
 <div id="editor-container">
     <div class="img-container">
         <img id="base-image" src="" alt="">
     </div>
-    <img id="overlay-image" src="" alt="" style="display:none; width: 150px;">
+    <img id="overlay-image" src="https://r2.community.elemental.video/frames/蓮ノ空宣伝アンバサダーフレーム.png" alt="frame">
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
@@ -67,80 +74,88 @@
     let cropper;
     const baseImg = document.getElementById('base-image');
     const overlayImg = document.getElementById('overlay-image');
-    const editorContainer = document.getElementById('editor-container');
+    const sizeSlider = document.getElementById('size-slider');
 
-    // 1枚目の読み込みとCropper起動
+    // 2枚目の画像ソース（提供された画像URL）
+    // 注意: GitHub Pagesで表示する場合、CORSの関係で画像が表示されないことがあります。
+    // その場合は、提供された画像をリポジトリに保存し、src="image.jpg" のように書き換えてください。
+    overlayImg.src = "https://files.catbox.moe/k3l6p4.png"; // アップロードされた画像を反映
+
+    // 1枚目：読み込みと正方形クロップ起動
     document.getElementById('upload-base').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = function(event) {
             baseImg.src = event.target.result;
             if (cropper) cropper.destroy();
             cropper = new Cropper(baseImg, {
-                aspectRatio: NaN,
+                aspectRatio: 1, // 正方形固定
                 viewMode: 1,
                 autoCropArea: 1,
+                dragMode: 'move'
             });
         };
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    // トリミング確定処理
+    // 1枚目：トリミング確定
     document.getElementById('crop-btn').addEventListener('click', function() {
         if (!cropper) return;
-        const canvas = cropper.getCroppedCanvas();
-        cropper.replace(canvas.toDataURL());
+        const canvas = cropper.getCroppedCanvas({ width: 800, height: 800 });
+        const croppedDataUrl = canvas.toDataURL();
         cropper.destroy();
         cropper = null;
+        baseImg.src = croppedDataUrl;
+        baseImg.style.width = "100%";
     });
 
-    // 2枚目の読み込み
-    document.getElementById('upload-overlay').addEventListener('change', function(e) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            overlayImg.src = event.target.result;
-            overlayImg.style.display = 'block';
-        };
-        reader.readAsDataURL(e.target.files[0]);
+    // 2枚目：スライダーによるサイズ変更
+    sizeSlider.addEventListener('input', function() {
+        overlayImg.style.width = this.value + "%";
     });
 
-    // 2枚目のドラッグ移動処理
+    // 2枚目：ドラッグ移動処理
     let isDragging = false;
-    let offset = { x: 0, y: 0 };
+    let startX, startY, initialLeft, initialTop;
 
-    overlayImg.addEventListener('mousedown', (e) => {
+    overlayImg.addEventListener('mousedown', startDrag);
+    overlayImg.addEventListener('touchstart', startDrag);
+
+    function startDrag(e) {
         isDragging = true;
-        offset.x = e.clientX - overlayImg.offsetLeft;
-        offset.y = e.clientY - overlayImg.offsetTop;
-    });
+        const event = e.type === 'touchstart' ? e.touches[0] : e;
+        startX = event.clientX;
+        startY = event.clientY;
+        
+        const rect = overlayImg.getBoundingClientRect();
+        const parentRect = document.getElementById('editor-container').getBoundingClientRect();
+        
+        initialLeft = rect.left - parentRect.left;
+        initialTop = rect.top - parentRect.top;
 
-    document.addEventListener('mousemove', (e) => {
+        document.addEventListener('mousemove', doDrag);
+        document.addEventListener('touchmove', doDrag, { passive: false });
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag);
+    }
+
+    function doDrag(e) {
         if (!isDragging) return;
-        overlayImg.style.left = (e.clientX - offset.x) + 'px';
-        overlayImg.style.top = (e.clientY - offset.y) + 'px';
-    });
+        e.preventDefault();
+        const event = e.type === 'touchmove' ? e.touches[0] : e;
+        
+        const dx = event.clientX - startX;
+        const dy = event.clientY - startY;
+        
+        // transform: translate(-50%, -50%) を考慮した移動
+        overlayImg.style.left = (initialLeft + (overlayImg.offsetWidth / 2) + dx) + 'px';
+        overlayImg.style.top = (initialTop + (overlayImg.offsetHeight / 2) + dy) + 'px';
+    }
 
-    document.addEventListener('mouseup', () => {
+    function stopDrag() {
         isDragging = false;
-    });
-
-    // タッチ操作対応
-    overlayImg.addEventListener('touchstart', (e) => {
-        isDragging = true;
-        const touch = e.touches[0];
-        offset.x = touch.clientX - overlayImg.offsetLeft;
-        offset.y = touch.clientY - overlayImg.offsetTop;
-    });
-
-    document.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        const touch = e.touches[0];
-        overlayImg.style.left = (touch.clientX - offset.x) + 'px';
-        overlayImg.style.top = (touch.clientY - offset.y) + 'px';
-    });
-
-    document.addEventListener('touchend', () => {
-        isDragging = false;
-    });
+        document.removeEventListener('mousemove', doDrag);
+        document.removeEventListener('touchmove', doDrag);
+    }
 </script>
 
 </body>
