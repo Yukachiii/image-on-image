@@ -95,17 +95,19 @@
             <img id="base-image" src="" alt="">
             <img id="overlay-image" src="image1.png" alt="frame">
         </div>
-        <button id="save-btn" class="btn-save">画像を保存する</button>
+        <button id="save-btn" class="btn-save">完成画像を表示して保存</button>
     </div>
     <div class="info-section">
         <h3>使い方</h3>
         <ul class="usage-list">
-            <li><strong>① ファイルを選択を押してアイコンにしたいベース画像を選びます。</strong></li>
-            <li><strong>② フレームを選択からフレームを選びます。</strong></li>
-            <li><strong>③ 写真を調整します。フレームが透過されて表示されるので確認しながらいい感じにします。</strong>
+            <li><strong>① 画像を選びます</strong></li>
+            <li><strong>② フレームを選びます</strong></li>
+            <li><strong>③ 写真を調整します</strong>
                 <div class="usage-note">枠内をドラッグ（スワイプ）して移動、スライダーで拡大縮小できます。</div>
             </li>
-            <li><strong>④ 保存します。</strong></li>
+            <li><strong>④ 保存します</strong>
+                <div class="usage-note">ボタンを押すと別タブが開くので、画像を<strong>長押し</strong>して保存してください。</div>
+            </li>
         </ul>
     </div>
 </div>
@@ -178,31 +180,86 @@
         baseImg.style.transform = `translate(${posX - baseImg.width/2}px, ${posY - baseImg.height/2}px) scale(${imgScale})`;
     }
 
+    // 保存（別タブ展開）ロジック
     saveBtn.addEventListener('click', () => {
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
-        finalCanvas.width = 800;
-        finalCanvas.height = 800;
-        const renderScale = 800 / container.offsetWidth;
+        
+        // 出力解像度 (1000x1000)
+        const outputSize = 1000;
+        finalCanvas.width = outputSize;
+        finalCanvas.height = outputSize;
+        
+        const renderScale = outputSize / container.offsetWidth;
+        
         const img = new Image();
         img.src = baseImg.src;
         img.onload = () => {
+            // 背景描画
             ctx.save();
             ctx.translate(posX * renderScale, posY * renderScale);
             ctx.scale(imgScale * renderScale, imgScale * renderScale);
             ctx.drawImage(img, -img.width / 2, -img.height / 2);
             ctx.restore();
+            
+            // フレーム描画
             const fImg = new Image();
             fImg.src = overlayImg.src;
             fImg.onload = () => {
                 const fScale = sizeSlider.value / 100;
-                const dw = 800 * fScale;
-                const dh = 800 * fScale;
-                ctx.drawImage(fImg, (800 - dw) / 2, (800 - dh) / 2, dw, dh);
-                const link = document.createElement('a');
-                link.download = 'hasunosora-ambassador.png';
-                link.href = finalCanvas.toDataURL('image/png');
-                link.click();
+                const dw = outputSize * fScale;
+                const dh = outputSize * fScale;
+                ctx.drawImage(fImg, (outputSize - dw) / 2, (outputSize - dh) / 2, dw, dh);
+                
+                // 画像データ変換
+                const dataUrl = finalCanvas.toDataURL('image/png');
+                
+                // 新しいタブで表示
+                const newWindow = window.open();
+                if (newWindow) {
+                    newWindow.document.write(`
+                        <html>
+                            <head>
+                                <title>画像を長押しして保存</title>
+                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                                <style>
+                                    body { 
+                                        margin: 0; 
+                                        display: flex; 
+                                        flex-direction: column; 
+                                        align-items: center; 
+                                        justify-content: center; 
+                                        background: #1a1a1a; 
+                                        color: white; 
+                                        font-family: sans-serif; 
+                                        min-height: 100vh;
+                                    }
+                                    img { 
+                                        max-width: 90%; 
+                                        height: auto; 
+                                        border: 2px solid #fff;
+                                        box-shadow: 0 0 20px rgba(0,0,0,0.5); 
+                                    }
+                                    .msg { 
+                                        margin-top: 20px; 
+                                        padding: 10px 20px; 
+                                        background: #f472b6; 
+                                        border-radius: 30px; 
+                                        font-weight: bold;
+                                        font-size: 14px;
+                                    }
+                                </style>
+                            </head>
+                            <body>
+                                <img src="${dataUrl}" alt="アンバサダー画像">
+                                <div class="msg">画像を長押しして保存してね！</div>
+                            </body>
+                        </html>
+                    `);
+                    newWindow.document.close();
+                } else {
+                    alert("ポップアップがブロックされました。ブラウザの設定で許可するか、Safari/Chromeなどの標準ブラウザで開き直してください。");
+                }
             };
         };
     });
