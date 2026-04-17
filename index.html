@@ -25,16 +25,16 @@
             overflow: hidden;
             border: 4px solid #f472b6;
             margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            cursor: move;
+            touch-action: none; /* スマホでのスクロール防止 */
         }
 
         #base-image {
-            width: 100%;
-            height: 100%;
-            object-fit: cover; /* 枠に合わせて画像をフィットさせる */
+            position: absolute;
+            transform-origin: center center;
             display: none;
+            user-select: none;
+            pointer-events: none;
         }
 
         #overlay-image {
@@ -46,7 +46,6 @@
             pointer-events: none;
             user-select: none;
             width: 100%;
-            display: block;
         }
 
         button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
@@ -58,6 +57,7 @@
 
         h3 { margin-top: 0; color: #f472b6; border-bottom: 2px solid #fdf2f8; padding-bottom: 10px; }
         .usage-list { padding-left: 20px; line-height: 1.6; }
+        .usage-note { font-size: 0.85em; color: #666; }
         
         footer { margin-top: 40px; padding: 20px; font-size: 0.8em; color: #999; text-align: center; width: 100%; }
     </style>
@@ -94,7 +94,11 @@
             
             <div id="size-controls">
                 <div class="input-group">
-                    <span class="slider-label">3. フレームのサイズ調整:</span>
+                    <span class="slider-label">3. 背景の拡大縮小:</span>
+                    <input type="range" id="bg-scale-slider" min="10" max="300" value="100">
+                </div>
+                <div class="input-group">
+                    <span class="slider-label">4. フレームのサイズ調整:</span>
                     <input type="range" id="size-slider" min="50" max="150" value="100">
                 </div>
             </div>
@@ -113,7 +117,10 @@
         <ul class="usage-list">
             <li><strong>① 画像を選びます</strong></li>
             <li><strong>② フレームを選びます</strong></li>
-            <li><strong>③ サイズを調整して保存します</strong></li>
+            <li><strong>③ 写真を調整します</strong>
+                <div class="usage-note">枠内をドラッグ（スワイプ）して移動、スライダーで拡大縮小できます。</div>
+            </li>
+            <li><strong>④ 保存します</strong></li>
         </ul>
     </div>
 </div>
@@ -123,78 +130,102 @@
 </footer>
 
 <script>
+    const container = document.getElementById('editor-container');
     const baseImg = document.getElementById('base-image');
     const overlayImg = document.getElementById('overlay-image');
     const sizeSlider = document.getElementById('size-slider');
+    const bgScaleSlider = document.getElementById('bg-scale-slider');
     const sizeControls = document.getElementById('size-controls');
     const saveBtn = document.getElementById('save-btn');
     const frameSelector = document.getElementById('frame-selector');
 
-    // フレームの切り替え
-    frameSelector.addEventListener('change', function() {
-        overlayImg.src = this.value;
-    });
+    let posX = 0, posY = 0;
+    let imgScale = 1;
+    let isDragging = false;
+    let startX, startY;
 
-    // ファイル選択時
-    document.getElementById('upload-base').addEventListener('change', function(e) {
+    // フレームの切り替え
+    frameSelector.addEventListener('change', () => { overlayImg.src = frameSelector.value; });
+
+    // ファイル選択
+    document.getElementById('upload-base').addEventListener('change', (e) => {
         if (!e.target.files[0]) return;
-        
         const reader = new FileReader();
-        reader.onload = function(event) {
+        reader.onload = (event) => {
             baseImg.src = event.target.result;
             baseImg.style.display = 'block';
-            
+            baseImg.onload = () => {
+                // 初期位置を中央に
+                posX = container.offsetWidth / 2;
+                posY = container.offsetHeight / 2;
+                updateTransform();
+            };
             sizeControls.style.display = 'block';
             saveBtn.style.display = 'block';
         };
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    // スライダーでフレームサイズ変更
-    sizeSlider.addEventListener('input', function() {
-        overlayImg.style.width = this.value + "%";
+    // 背景の拡大縮小スライダー
+    bgScaleSlider.addEventListener('input', () => {
+        imgScale = bgScaleSlider.value / 100;
+        updateTransform();
     });
 
-    // 保存処理 (800x800で書き出し)
-    saveBtn.addEventListener('click', function() {
+    // フレームのサイズスライダー
+    sizeSlider.addEventListener('input', () => {
+        overlayImg.style.width = sizeSlider.value + "%";
+    });
+
+    // 移動（ドラッグ）処理
+    container.addEventListener('pointerdown', (e) => {
+        if (baseImg.src === "") return;
+        isDragging = true;
+        startX = e.clientX - posX;
+        startY = e.clientY - posY;
+        container.setPointerCapture(e.pointerId);
+    });
+
+    container.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        posX = e.clientX - startX;
+        posY = e.clientY - startY;
+        updateTransform();
+    });
+
+    container.addEventListener('pointerup', () => { isDragging = false; });
+
+    function updateTransform() {
+        baseImg.style.transform = `translate(${posX - baseImg.width/2}px, ${posY - baseImg.height/2}px) scale(${imgScale})`;
+    }
+
+    // 保存処理
+    saveBtn.addEventListener('click', () => {
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
         finalCanvas.width = 800;
         finalCanvas.height = 800;
 
-        const baseImgForCanvas = new Image();
-        baseImgForCanvas.src = baseImg.src;
-        baseImgForCanvas.onload = function() {
-            // 背景画像を中央で切り抜いて描画 (object-fit: coverの挙動を再現)
-            const canvasAspect = 1;
-            const imgAspect = baseImgForCanvas.width / baseImgForCanvas.height;
-            let sx, sy, sw, sh;
+        const renderScale = 800 / container.offsetWidth;
 
-            if (imgAspect > canvasAspect) {
-                sh = baseImgForCanvas.height;
-                sw = sh * canvasAspect;
-                sx = (baseImgForCanvas.width - sw) / 2;
-                sy = 0;
-            } else {
-                sw = baseImgForCanvas.width;
-                sh = sw / canvasAspect;
-                sx = 0;
-                sy = (baseImgForCanvas.height - sh) / 2;
-            }
+        // 背景描画
+        const img = new Image();
+        img.src = baseImg.src;
+        img.onload = () => {
+            ctx.save();
+            ctx.translate(posX * renderScale, posY * renderScale);
+            ctx.scale(imgScale * renderScale, imgScale * renderScale);
+            ctx.drawImage(img, -img.width / 2, -img.height / 2);
+            ctx.restore();
 
-            ctx.drawImage(baseImgForCanvas, sx, sy, sw, sh, 0, 0, 800, 800);
-            
-            // フレームを描画
-            const frameImgForCanvas = new Image();
-            frameImgForCanvas.src = overlayImg.src;
-            frameImgForCanvas.onload = function() {
-                const scale = sizeSlider.value / 100;
-                const dw = 800 * scale;
-                const dh = 800 * scale;
-                const dx = (800 - dw) / 2;
-                const dy = (800 - dh) / 2;
-                
-                ctx.drawImage(frameImgForCanvas, dx, dy, dw, dh);
+            // フレーム描画
+            const fImg = new Image();
+            fImg.src = overlayImg.src;
+            fImg.onload = () => {
+                const fScale = sizeSlider.value / 100;
+                const dw = 800 * fScale;
+                const dh = 800 * fScale;
+                ctx.drawImage(fImg, (800 - dw) / 2, (800 - dh) / 2, dw, dh);
                 
                 const link = document.createElement('a');
                 link.download = 'hasunosora-ambassador.png';
