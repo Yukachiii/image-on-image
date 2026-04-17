@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>宣伝アンバサダー画像メーカー</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
     <style>
         body { font-family: sans-serif; background: #fdf2f8; margin: 0; padding: 20px; color: #333; display: flex; flex-direction: column; align-items: center; }
         .main-wrapper { display: flex; flex-wrap: wrap; gap: 20px; max-width: 1000px; width: 100%; justify-content: center; }
@@ -20,15 +19,23 @@
         #editor-container {
             position: relative;
             width: 100%;
-            background: #fff;
+            max-width: 500px;
+            aspect-ratio: 1 / 1;
+            background: #eee;
             overflow: hidden;
             border: 4px solid #f472b6;
             margin-bottom: 20px;
-            min-height: 300px;
-            aspect-ratio: 1 / 1; /* 初期状態は正方形 */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .cropper-container { width: 100% !important; height: 100% !important; }
+        #base-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* 枠に合わせて画像をフィットさせる */
+            display: none;
+        }
 
         #overlay-image {
             position: absolute;
@@ -39,14 +46,10 @@
             pointer-events: none;
             user-select: none;
             width: 100%;
-            display: block; /* 最初から表示 */
-            opacity: 1;    /* 初期状態は不透明 */
+            display: block;
         }
-        #overlay-image.is-preview { opacity: 0.6; } /* 画像調整中は少し透かす */
 
         button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
-        .btn-primary { background: #f472b6; color: white; }
-        .btn-primary:hover { background: #db2777; }
         .btn-save { background: #10b981; color: white; display: none; margin-top: 20px; font-size: 1.1em; }
         .btn-save:hover { background: #059669; }
 
@@ -55,7 +58,6 @@
 
         h3 { margin-top: 0; color: #f472b6; border-bottom: 2px solid #fdf2f8; padding-bottom: 10px; }
         .usage-list { padding-left: 20px; line-height: 1.6; }
-        .usage-note { font-size: 0.9em; color: #666; margin-bottom: 8px; list-style: none; }
         
         footer { margin-top: 40px; padding: 20px; font-size: 0.8em; color: #999; text-align: center; width: 100%; }
     </style>
@@ -89,12 +91,10 @@
                     <option value="image12.png">桂城泉</option>
                 </select>
             </div>
-
-            <button id="crop-btn" class="btn-primary" style="display:none;">3. トリミング位置を確定</button>
             
             <div id="size-controls">
                 <div class="input-group">
-                    <span class="slider-label">4. フレームのサイズ調整:</span>
+                    <span class="slider-label">3. フレームのサイズ調整:</span>
                     <input type="range" id="size-slider" min="50" max="150" value="100">
                 </div>
             </div>
@@ -113,10 +113,7 @@
         <ul class="usage-list">
             <li><strong>① 画像を選びます</strong></li>
             <li><strong>② フレームを選びます</strong></li>
-            <li><strong>③ 位置を調整します</strong>
-                <div class="usage-note">フレームがガイドとして表示されます。ロゴや枠に被らないように調整してください。</div>
-            </li>
-            <li><strong>④ 確定して保存します</strong></li>
+            <li><strong>③ サイズを調整して保存します</strong></li>
         </ul>
     </div>
 </div>
@@ -125,36 +122,17 @@
     ©プロジェクトラブライブ！蓮ノ空女学院スクールアイドルクラブ
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
-
 <script>
-    let cropper;
-    const editorContainer = document.getElementById('editor-container');
     const baseImg = document.getElementById('base-image');
     const overlayImg = document.getElementById('overlay-image');
     const sizeSlider = document.getElementById('size-slider');
     const sizeControls = document.getElementById('size-controls');
     const saveBtn = document.getElementById('save-btn');
-    const cropBtn = document.getElementById('crop-btn');
     const frameSelector = document.getElementById('frame-selector');
-
-    // プレビューサイズ調整
-    function adjustEditorSize() {
-        const img = new Image();
-        img.src = overlayImg.src;
-        img.onload = function() {
-            const aspectRatio = this.width / this.height;
-            editorContainer.style.aspectRatio = aspectRatio.toString();
-        };
-    }
-
-    // 初期ロード時にもサイズを調整
-    window.addEventListener('load', adjustEditorSize);
 
     // フレームの切り替え
     frameSelector.addEventListener('change', function() {
         overlayImg.src = this.value;
-        adjustEditorSize();
     });
 
     // ファイル選択時
@@ -164,85 +142,62 @@
         const reader = new FileReader();
         reader.onload = function(event) {
             baseImg.src = event.target.result;
+            baseImg.style.display = 'block';
             
-            // 画像選択中モード
-            overlayImg.classList.add('is-preview');
-            overlayImg.classList.remove('is-fixed');
-            sizeControls.style.display = 'none';
-            saveBtn.style.display = 'none';
-            cropBtn.style.display = 'block';
-
-            if (cropper) cropper.destroy();
-            
-            cropper = new Cropper(baseImg, {
-                aspectRatio: 1,
-                viewMode: 1,
-                dragMode: 'move',
-                guides: false,
-                center: true,
-                background: false,
-                autoCropArea: 1,
-                cropBoxMovable: false,
-                cropBoxResizable: false,
-                ready() {
-                    overlayImg.style.width = "100%";
-                }
-            });
+            sizeControls.style.display = 'block';
+            saveBtn.style.display = 'block';
         };
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    // トリミング確定
-    cropBtn.addEventListener('click', function() {
-        if (!cropper) return;
-        
-        const canvas = cropper.getCroppedCanvas({ width: 1000, height: 1000 });
-        baseImg.src = canvas.toDataURL();
-        
-        cropper.destroy();
-        cropper = null;
-        
-        baseImg.style.width = "100%";
-        baseImg.style.height = "auto"; 
-        
-        // 確定モード（不透明）
-        overlayImg.classList.remove('is-preview');
-        overlayImg.classList.add('is-fixed');
-        sizeControls.style.display = 'block';
-        saveBtn.style.display = 'block';
-        cropBtn.style.display = 'none';
-        
-        adjustEditorSize();
-    });
-
+    // スライダーでフレームサイズ変更
     sizeSlider.addEventListener('input', function() {
         overlayImg.style.width = this.value + "%";
     });
 
+    // 保存処理 (800x800で書き出し)
     saveBtn.addEventListener('click', function() {
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
-        finalCanvas.width = 1000;
-        finalCanvas.height = 1000;
+        finalCanvas.width = 800;
+        finalCanvas.height = 800;
 
         const baseImgForCanvas = new Image();
         baseImgForCanvas.src = baseImg.src;
         baseImgForCanvas.onload = function() {
-            ctx.drawImage(baseImgForCanvas, 0, 0, 1000, 1000);
+            // 背景画像を中央で切り抜いて描画 (object-fit: coverの挙動を再現)
+            const canvasAspect = 1;
+            const imgAspect = baseImgForCanvas.width / baseImgForCanvas.height;
+            let sx, sy, sw, sh;
+
+            if (imgAspect > canvasAspect) {
+                sh = baseImgForCanvas.height;
+                sw = sh * canvasAspect;
+                sx = (baseImgForCanvas.width - sw) / 2;
+                sy = 0;
+            } else {
+                sw = baseImgForCanvas.width;
+                sh = sw / canvasAspect;
+                sx = 0;
+                sy = (baseImgForCanvas.height - sh) / 2;
+            }
+
+            ctx.drawImage(baseImgForCanvas, sx, sy, sw, sh, 0, 0, 800, 800);
             
+            // フレームを描画
             const frameImgForCanvas = new Image();
             frameImgForCanvas.src = overlayImg.src;
             frameImgForCanvas.onload = function() {
                 const scale = sizeSlider.value / 100;
-                const dw = 1000 * scale;
-                const dh = 1000 * scale;
-                const dx = (1000 - dw) / 2;
-                const dy = (1000 - dh) / 2;
+                const dw = 800 * scale;
+                const dh = 800 * scale;
+                const dx = (800 - dw) / 2;
+                const dy = (800 - dh) / 2;
                 
                 ctx.drawImage(frameImgForCanvas, dx, dy, dw, dh);
                 
                 const link = document.createElement('a');
-                link.download = 'ambassador-image.png';
+                link.download = 'hasunosora-ambassador.png';
                 link.href = finalCanvas.toDataURL('image/png');
                 link.click();
             };
