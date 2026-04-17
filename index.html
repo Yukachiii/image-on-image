@@ -25,8 +25,8 @@
             margin-bottom: 20px;
         }
 
-        .img-container { width: 100%; height: 100%; }
-        #base-image { display: block; max-width: 100%; }
+        /* Cropperのコンテナサイズを調整 */
+        .cropper-container { width: 100% !important; height: 100% !important; }
 
         #overlay-image {
             position: absolute;
@@ -34,24 +34,27 @@
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 10;
-            pointer-events: none;
+            pointer-events: none; /* 下のCropperを操作できるように */
             user-select: none;
             width: 100%;
             display: none;
+            opacity: 0.7; /* トリミング中は少し透かす */
         }
+        /* 確定後は不透明にするクラス */
+        #overlay-image.is-fixed { opacity: 1; }
 
-        button { padding: 10px 20px; cursor: pointer; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; }
+        button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
         .btn-primary { background: #f472b6; color: white; }
         .btn-primary:hover { background: #db2777; }
-        .btn-save { background: #10b981; color: white; display: none; margin-top: 20px; }
+        .btn-save { background: #10b981; color: white; display: none; margin-top: 20px; font-size: 1.1em; }
         .btn-save:hover { background: #059669; }
 
-        input[type="range"] { width: 100%; }
+        input[type="range"] { width: 100%; cursor: pointer; }
         #size-controls { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; }
 
         h3 { margin-top: 0; color: #f472b6; border-bottom: 2px solid #fdf2f8; padding-bottom: 10px; }
         .usage-list { padding-left: 20px; line-height: 1.6; }
-        .usage-note { font-size: 0.9em; color: #666; margin-left: 1.2em; list-style: none; }
+        .usage-note { font-size: 0.9em; color: #666; margin-bottom: 8px; list-style: none; }
         
         footer { margin-top: 40px; padding: 20px; font-size: 0.8em; color: #999; text-align: center; width: 100%; }
     </style>
@@ -66,7 +69,7 @@
                 <label>1. 背景写真を選択: </label>
                 <input type="file" id="upload-base" accept="image/*">
             </div>
-            <button id="crop-btn" class="btn-primary">2. 背景のトリミングを確定</button>
+            <button id="crop-btn" class="btn-primary" style="display:none;">2. トリミング位置を確定</button>
             <div id="size-controls">
                 <div class="input-group">
                     <span class="slider-label">3. フレームのサイズ調整:</span>
@@ -76,9 +79,7 @@
         </div>
 
         <div id="editor-container">
-            <div class="img-container">
-                <img id="base-image" src="" alt="">
-            </div>
+            <img id="base-image" src="" alt="">
             <img id="overlay-image" src="image.png" alt="frame">
         </div>
 
@@ -88,13 +89,13 @@
     <div class="info-section">
         <h3>使い方</h3>
         <ul class="usage-list">
-            <li>①画像を選びます。</li>
-            <li>②トリミングをします。
-                <li class="usage-note">蓮ノ空のロゴが表示されるので下部は少し余裕を持つといいです。</li>
+            <li><strong>① 画像を選びます</strong></li>
+            <li><strong>② 位置を調整します</strong>
+                <div class="usage-note">フレームがうっすら表示されるので、ロゴが被らないように調整してください。</div>
             </li>
-            <li>③確定ボタンを押します。</li>
-            <li>④フレームが重なるので画像を保存するボタンを押します。
-                <li class="usage-note">お好みでサイズを変更します。</li>
+            <li><strong>③ 確定ボタンを押します</strong></li>
+            <li><strong>④ 保存します</strong>
+                <div class="usage-note">お好みでフレームのサイズを調整して保存してください。</div>
             </li>
         </ul>
     </div>
@@ -113,67 +114,102 @@
     const sizeSlider = document.getElementById('size-slider');
     const sizeControls = document.getElementById('size-controls');
     const saveBtn = document.getElementById('save-btn');
+    const cropBtn = document.getElementById('crop-btn');
 
+    // ファイル選択時
     document.getElementById('upload-base').addEventListener('change', function(e) {
+        if (!e.target.files[0]) return;
+        
         const reader = new FileReader();
         reader.onload = function(event) {
             baseImg.src = event.target.result;
-            overlayImg.style.display = 'none';
+            
+            // 状態リセット
+            overlayImg.style.display = 'block';
+            overlayImg.classList.remove('is-fixed');
+            overlayImg.style.opacity = "0.6"; // ガイドとして半透明に
             sizeControls.style.display = 'none';
             saveBtn.style.display = 'none';
+            cropBtn.style.display = 'block';
+
             if (cropper) cropper.destroy();
+            
             cropper = new Cropper(baseImg, {
                 aspectRatio: 1,
                 viewMode: 1,
-                autoCropArea: 1,
                 dragMode: 'move',
-                background: false
+                guides: false,
+                center: true,
+                background: false,
+                autoCropArea: 1,
+                cropBoxMovable: false, // 枠は固定して中身を動かすモード
+                cropBoxResizable: false,
+                ready() {
+                    // 初期表示でオーバーレイをリセット
+                    overlayImg.style.width = "100%";
+                }
             });
         };
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    document.getElementById('crop-btn').addEventListener('click', function() {
+    // トリミング確定
+    cropBtn.addEventListener('click', function() {
         if (!cropper) return;
+        
         const canvas = cropper.getCroppedCanvas({ width: 1000, height: 1000 });
         baseImg.src = canvas.toDataURL();
+        
         cropper.destroy();
         cropper = null;
+        
+        // 確定後の表示
         baseImg.style.width = "100%";
-        overlayImg.style.display = 'block';
+        overlayImg.classList.add('is-fixed');
+        overlayImg.style.opacity = "1";
         sizeControls.style.display = 'block';
         saveBtn.style.display = 'block';
+        cropBtn.style.display = 'none';
     });
 
+    // スライダー連動
     sizeSlider.addEventListener('input', function() {
         overlayImg.style.width = this.value + "%";
     });
 
+    // 保存処理
     saveBtn.addEventListener('click', function() {
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
         finalCanvas.width = 1000;
         finalCanvas.height = 1000;
+
         const baseImgForCanvas = new Image();
         baseImgForCanvas.src = baseImg.src;
         baseImgForCanvas.onload = function() {
+            // 背景描画
             ctx.drawImage(baseImgForCanvas, 0, 0, 1000, 1000);
+            
             const frameImgForCanvas = new Image();
             frameImgForCanvas.src = overlayImg.src;
             frameImgForCanvas.onload = function() {
+                // フレーム描画（スライダーのスケールを反映）
                 const scale = sizeSlider.value / 100;
                 const dw = 1000 * scale;
                 const dh = 1000 * scale;
                 const dx = (1000 - dw) / 2;
                 const dy = (1000 - dh) / 2;
+                
                 ctx.drawImage(frameImgForCanvas, dx, dy, dw, dh);
+                
+                // ダウンロード
                 const link = document.createElement('a');
-                link.download = 'ambassador-image.png';
+                link.download = 'hasunosora-ambassador.png';
                 link.href = finalCanvas.toDataURL('image/png');
                 link.click();
             };
             frameImgForCanvas.onerror = function() {
-                alert('Error: image.png not found.');
+                alert('エラー: image.png が読み込めませんでした。同じフォルダに画像を配置してください。');
             }
         };
     });
