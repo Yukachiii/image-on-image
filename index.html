@@ -15,6 +15,8 @@
         .input-group { margin-bottom: 15px; }
         .slider-label { display: block; margin-top: 10px; font-weight: bold; }
         
+        select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; margin-top: 5px; }
+
         #editor-container {
             position: relative;
             width: 100%;
@@ -25,7 +27,6 @@
             margin-bottom: 20px;
         }
 
-        /* Cropperのコンテナサイズを調整 */
         .cropper-container { width: 100% !important; height: 100% !important; }
 
         #overlay-image {
@@ -34,13 +35,12 @@
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 10;
-            pointer-events: none; /* 下のCropperを操作できるように */
+            pointer-events: none;
             user-select: none;
             width: 100%;
             display: none;
-            opacity: 0.7; /* トリミング中は少し透かす */
+            opacity: 0.7;
         }
-        /* 確定後は不透明にするクラス */
         #overlay-image.is-fixed { opacity: 1; }
 
         button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
@@ -65,14 +65,35 @@
     <div class="editor-section">
         <div class="controls">
             <h3>宣伝アンバサダー画像作成</h3>
+            
             <div class="input-group">
-                <label>1. 背景写真を選択: </label>
+                <label>1. フレームを選択:</label>
+                <select id="frame-selector">
+                    <option value="image1.png">フレーム1</option>
+                    <option value="image2.png">フレーム2</option>
+                    <option value="image3.png">フレーム3</option>
+                    <option value="image4.png">フレーム4</option>
+                    <option value="image5.png">フレーム5</option>
+                    <option value="image6.png">フレーム6</option>
+                    <option value="image7.png">フレーム7</option>
+                    <option value="image8.png">フレーム8</option>
+                    <option value="image9.png">フレーム9</option>
+                    <option value="image10.png">フレーム10</option>
+                    <option value="image11.png">フレーム11</option>
+                    <option value="image12.png">フレーム12</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>2. 背景写真を選択: </label>
                 <input type="file" id="upload-base" accept="image/*">
             </div>
-            <button id="crop-btn" class="btn-primary" style="display:none;">2. トリミング位置を確定</button>
+
+            <button id="crop-btn" class="btn-primary" style="display:none;">3. トリミング位置を確定</button>
+            
             <div id="size-controls">
                 <div class="input-group">
-                    <span class="slider-label">3. フレームのサイズ調整:</span>
+                    <span class="slider-label">4. フレームのサイズ調整:</span>
                     <input type="range" id="size-slider" min="50" max="150" value="100">
                 </div>
             </div>
@@ -80,7 +101,7 @@
 
         <div id="editor-container">
             <img id="base-image" src="" alt="">
-            <img id="overlay-image" src="image.png" alt="frame">
+            <img id="overlay-image" src="image1.png" alt="frame">
         </div>
 
         <button id="save-btn" class="btn-save">画像を保存する</button>
@@ -89,14 +110,12 @@
     <div class="info-section">
         <h3>使い方</h3>
         <ul class="usage-list">
-            <li><strong>① 画像を選びます</strong></li>
-            <li><strong>② 位置を調整します</strong>
-                <div class="usage-note">フレームがうっすら表示されるので、ロゴが被らないように調整してください。</div>
+            <li><strong>① フレームを選びます</strong></li>
+            <li><strong>② 画像を選びます</strong></li>
+            <li><strong>③ 位置を調整します</strong>
+                <div class="usage-note">選んだフレームがガイドとして表示されます。</div>
             </li>
-            <li><strong>③ 確定ボタンを押します</strong></li>
-            <li><strong>④ 保存します</strong>
-                <div class="usage-note">お好みでフレームのサイズを調整して保存してください。</div>
-            </li>
+            <li><strong>④ 確定して保存します</strong></li>
         </ul>
     </div>
 </div>
@@ -115,6 +134,12 @@
     const sizeControls = document.getElementById('size-controls');
     const saveBtn = document.getElementById('save-btn');
     const cropBtn = document.getElementById('crop-btn');
+    const frameSelector = document.getElementById('frame-selector');
+
+    // フレームの切り替え
+    frameSelector.addEventListener('change', function() {
+        overlayImg.src = this.value;
+    });
 
     // ファイル選択時
     document.getElementById('upload-base').addEventListener('change', function(e) {
@@ -124,10 +149,9 @@
         reader.onload = function(event) {
             baseImg.src = event.target.result;
             
-            // 状態リセット
             overlayImg.style.display = 'block';
             overlayImg.classList.remove('is-fixed');
-            overlayImg.style.opacity = "0.6"; // ガイドとして半透明に
+            overlayImg.style.opacity = "0.6";
             sizeControls.style.display = 'none';
             saveBtn.style.display = 'none';
             cropBtn.style.display = 'block';
@@ -142,10 +166,9 @@
                 center: true,
                 background: false,
                 autoCropArea: 1,
-                cropBoxMovable: false, // 枠は固定して中身を動かすモード
+                cropBoxMovable: false,
                 cropBoxResizable: false,
                 ready() {
-                    // 初期表示でオーバーレイをリセット
                     overlayImg.style.width = "100%";
                 }
             });
@@ -163,7 +186,6 @@
         cropper.destroy();
         cropper = null;
         
-        // 確定後の表示
         baseImg.style.width = "100%";
         overlayImg.classList.add('is-fixed');
         overlayImg.style.opacity = "1";
@@ -172,7 +194,6 @@
         cropBtn.style.display = 'none';
     });
 
-    // スライダー連動
     sizeSlider.addEventListener('input', function() {
         overlayImg.style.width = this.value + "%";
     });
@@ -187,13 +208,11 @@
         const baseImgForCanvas = new Image();
         baseImgForCanvas.src = baseImg.src;
         baseImgForCanvas.onload = function() {
-            // 背景描画
             ctx.drawImage(baseImgForCanvas, 0, 0, 1000, 1000);
             
             const frameImgForCanvas = new Image();
             frameImgForCanvas.src = overlayImg.src;
             frameImgForCanvas.onload = function() {
-                // フレーム描画（スライダーのスケールを反映）
                 const scale = sizeSlider.value / 100;
                 const dw = 1000 * scale;
                 const dh = 1000 * scale;
@@ -202,14 +221,13 @@
                 
                 ctx.drawImage(frameImgForCanvas, dx, dy, dw, dh);
                 
-                // ダウンロード
                 const link = document.createElement('a');
-                link.download = 'hasunosora-ambassador.png';
+                link.download = 'ambassador-image.png';
                 link.href = finalCanvas.toDataURL('image/png');
                 link.click();
             };
             frameImgForCanvas.onerror = function() {
-                alert('エラー: image.png が読み込めませんでした。同じフォルダに画像を配置してください。');
+                alert('エラー: 選択された画像 (' + overlayImg.src.split('/').pop() + ') が見つかりません。同じフォルダに配置されているか確認してください。');
             }
         };
     });
