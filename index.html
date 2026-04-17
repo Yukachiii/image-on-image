@@ -20,11 +20,11 @@
         #editor-container {
             position: relative;
             width: 100%;
-            aspect-ratio: 1 / 1;
             background: #fff;
             overflow: hidden;
             border: 4px solid #f472b6;
             margin-bottom: 20px;
+            min-height: 300px;
         }
 
         .cropper-container { width: 100% !important; height: 100% !important; }
@@ -130,6 +130,7 @@
 
 <script>
     let cropper;
+    const editorContainer = document.getElementById('editor-container');
     const baseImg = document.getElementById('base-image');
     const overlayImg = document.getElementById('overlay-image');
     const sizeSlider = document.getElementById('size-slider');
@@ -138,12 +139,24 @@
     const cropBtn = document.getElementById('crop-btn');
     const frameSelector = document.getElementById('frame-selector');
 
-    // フレームの切り替え
+    function adjustEditorSize() {
+        if (overlayImg.style.display === 'none') {
+            editorContainer.style.aspectRatio = '1 / 1';
+        } else {
+            const img = new Image();
+            img.src = overlayImg.src;
+            img.onload = function() {
+                const aspectRatio = this.width / this.height;
+                editorContainer.style.aspectRatio = aspectRatio.toString();
+            };
+        }
+    }
+
     frameSelector.addEventListener('change', function() {
         overlayImg.src = this.value;
+        adjustEditorSize();
     });
 
-    // ファイル選択時
     document.getElementById('upload-base').addEventListener('change', function(e) {
         if (!e.target.files[0]) return;
         
@@ -157,6 +170,8 @@
             sizeControls.style.display = 'none';
             saveBtn.style.display = 'none';
             cropBtn.style.display = 'block';
+
+            adjustEditorSize();
 
             if (cropper) cropper.destroy();
             
@@ -178,7 +193,6 @@
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    // トリミング確定
     cropBtn.addEventListener('click', function() {
         if (!cropper) return;
         
@@ -189,18 +203,21 @@
         cropper = null;
         
         baseImg.style.width = "100%";
+        baseImg.style.height = "auto"; 
+        
         overlayImg.classList.add('is-fixed');
         overlayImg.style.opacity = "1";
         sizeControls.style.display = 'block';
         saveBtn.style.display = 'block';
         cropBtn.style.display = 'none';
+        
+        adjustEditorSize();
     });
 
     sizeSlider.addEventListener('input', function() {
         overlayImg.style.width = this.value + "%";
     });
 
-    // 保存処理
     saveBtn.addEventListener('click', function() {
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
