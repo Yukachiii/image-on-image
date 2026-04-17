@@ -9,13 +9,10 @@
         .main-wrapper { display: flex; flex-wrap: wrap; gap: 20px; max-width: 1000px; width: 100%; justify-content: center; }
         .editor-section { flex: 1; min-width: 300px; max-width: 500px; }
         .info-section { flex: 1; min-width: 300px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); align-self: flex-start; }
-        
         .controls { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 20px; }
         .input-group { margin-bottom: 15px; }
         .slider-label { display: block; margin-top: 10px; font-weight: bold; }
-        
         select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; margin-top: 5px; cursor: pointer; }
-
         #editor-container {
             position: relative;
             width: 100%;
@@ -26,9 +23,8 @@
             border: 4px solid #f472b6;
             margin-bottom: 20px;
             cursor: move;
-            touch-action: none; /* スマホでのスクロール防止 */
+            touch-action: none;
         }
-
         #base-image {
             position: absolute;
             transform-origin: center center;
@@ -36,7 +32,6 @@
             user-select: none;
             pointer-events: none;
         }
-
         #overlay-image {
             position: absolute;
             top: 50%;
@@ -47,18 +42,14 @@
             user-select: none;
             width: 100%;
         }
-
         button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
         .btn-save { background: #10b981; color: white; display: none; margin-top: 20px; font-size: 1.1em; }
         .btn-save:hover { background: #059669; }
-
         input[type="range"] { width: 100%; cursor: pointer; }
         #size-controls { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; }
-
         h3 { margin-top: 0; color: #f472b6; border-bottom: 2px solid #fdf2f8; padding-bottom: 10px; }
         .usage-list { padding-left: 20px; line-height: 1.6; }
         .usage-note { font-size: 0.85em; color: #666; }
-        
         footer { margin-top: 40px; padding: 20px; font-size: 0.8em; color: #999; text-align: center; width: 100%; }
     </style>
 </head>
@@ -68,12 +59,10 @@
     <div class="editor-section">
         <div class="controls">
             <h3>宣伝アンバサダー画像作成</h3>
-            
             <div class="input-group">
                 <label>1. 背景写真を選択: </label>
                 <input type="file" id="upload-base" accept="image/*">
             </div>
-
             <div class="input-group">
                 <label>2. フレームを選択:</label>
                 <select id="frame-selector">
@@ -91,7 +80,6 @@
                     <option value="image12.png">桂城泉</option>
                 </select>
             </div>
-            
             <div id="size-controls">
                 <div class="input-group">
                     <span class="slider-label">3. 背景の拡大縮小:</span>
@@ -103,15 +91,12 @@
                 </div>
             </div>
         </div>
-
         <div id="editor-container">
             <img id="base-image" src="" alt="">
             <img id="overlay-image" src="image1.png" alt="frame">
         </div>
-
         <button id="save-btn" class="btn-save">画像を保存する</button>
     </div>
-
     <div class="info-section">
         <h3>使い方</h3>
         <ul class="usage-list">
@@ -144,10 +129,8 @@
     let isDragging = false;
     let startX, startY;
 
-    // フレームの切り替え
     frameSelector.addEventListener('change', () => { overlayImg.src = frameSelector.value; });
 
-    // ファイル選択
     document.getElementById('upload-base').addEventListener('change', (e) => {
         if (!e.target.files[0]) return;
         const reader = new FileReader();
@@ -155,7 +138,6 @@
             baseImg.src = event.target.result;
             baseImg.style.display = 'block';
             baseImg.onload = () => {
-                // 初期位置を中央に
                 posX = container.offsetWidth / 2;
                 posY = container.offsetHeight / 2;
                 updateTransform();
@@ -166,18 +148,15 @@
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    // 背景の拡大縮小スライダー
     bgScaleSlider.addEventListener('input', () => {
         imgScale = bgScaleSlider.value / 100;
         updateTransform();
     });
 
-    // フレームのサイズスライダー
     sizeSlider.addEventListener('input', () => {
         overlayImg.style.width = sizeSlider.value + "%";
     });
 
-    // 移動（ドラッグ）処理
     container.addEventListener('pointerdown', (e) => {
         if (baseImg.src === "") return;
         isDragging = true;
@@ -199,16 +178,12 @@
         baseImg.style.transform = `translate(${posX - baseImg.width/2}px, ${posY - baseImg.height/2}px) scale(${imgScale})`;
     }
 
-    // 保存処理
     saveBtn.addEventListener('click', () => {
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
         finalCanvas.width = 800;
         finalCanvas.height = 800;
-
         const renderScale = 800 / container.offsetWidth;
-
-        // 背景描画
         const img = new Image();
         img.src = baseImg.src;
         img.onload = () => {
@@ -217,8 +192,6 @@
             ctx.scale(imgScale * renderScale, imgScale * renderScale);
             ctx.drawImage(img, -img.width / 2, -img.height / 2);
             ctx.restore();
-
-            // フレーム描画
             const fImg = new Image();
             fImg.src = overlayImg.src;
             fImg.onload = () => {
@@ -226,7 +199,6 @@
                 const dw = 800 * fScale;
                 const dh = 800 * fScale;
                 ctx.drawImage(fImg, (800 - dw) / 2, (800 - dh) / 2, dw, dh);
-                
                 const link = document.createElement('a');
                 link.download = 'hasunosora-ambassador.png';
                 link.href = finalCanvas.toDataURL('image/png');
