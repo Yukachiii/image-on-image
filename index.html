@@ -15,7 +15,7 @@
         .input-group { margin-bottom: 15px; }
         .slider-label { display: block; margin-top: 10px; font-weight: bold; }
         
-        select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; margin-top: 5px; }
+        select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; margin-top: 5px; cursor: pointer; }
 
         #editor-container {
             position: relative;
@@ -67,7 +67,12 @@
             <h3>宣伝アンバサダー画像作成</h3>
             
             <div class="input-group">
-                <label>1. フレームを選択:</label>
+                <label>1. 背景写真を選択: </label>
+                <input type="file" id="upload-base" accept="image/*">
+            </div>
+
+            <div class="input-group">
+                <label>2. フレームを選択:</label>
                 <select id="frame-selector">
                     <option value="image1.png">フレーム1</option>
                     <option value="image2.png">フレーム2</option>
@@ -82,11 +87,6 @@
                     <option value="image11.png">フレーム11</option>
                     <option value="image12.png">フレーム12</option>
                 </select>
-            </div>
-
-            <div class="input-group">
-                <label>2. 背景写真を選択: </label>
-                <input type="file" id="upload-base" accept="image/*">
             </div>
 
             <button id="crop-btn" class="btn-primary" style="display:none;">3. トリミング位置を確定</button>
@@ -110,12 +110,14 @@
     <div class="info-section">
         <h3>使い方</h3>
         <ul class="usage-list">
-            <li><strong>① フレームを選びます</strong></li>
-            <li><strong>② 画像を選びます</strong></li>
+            <li><strong>① 画像を選びます</strong></li>
+            <li><strong>② フレームを選びます</strong></li>
             <li><strong>③ 位置を調整します</strong>
-                <div class="usage-note">選んだフレームがガイドとして表示されます。</div>
+                <div class="usage-note">選んだフレームがガイドとして表示されます。ロゴや枠に被らないように調整してください。</div>
             </li>
-            <li><strong>④ 確定して保存します</strong></li>
+            <li><strong>④ 確定して保存します</strong>
+                <div class="usage-note">お好みでフレームのサイズを調整して保存ボタンを押してください。</div>
+            </li>
         </ul>
     </div>
 </div>
