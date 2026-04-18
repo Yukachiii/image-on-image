@@ -13,6 +13,7 @@
         .input-group { margin-bottom: 15px; }
         .slider-label { display: block; margin-top: 10px; font-weight: bold; }
         select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; margin-top: 5px; cursor: pointer; }
+        
         #editor-container {
             position: relative;
             width: 100%;
@@ -42,14 +43,37 @@
             user-select: none;
             width: 100%;
         }
+        
         button { padding: 12px 20px; cursor: pointer; border: none; border-radius: 20px; font-weight: bold; width: 100%; margin-top: 10px; transition: 0.3s; }
         .btn-save { background: #10b981; color: white; display: none; margin-top: 20px; font-size: 1.1em; }
         .btn-save:hover { background: #059669; }
         input[type="range"] { width: 100%; cursor: pointer; }
         #size-controls { display: none; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px; }
+        
+        /* 保存用プレビュー画面のスタイル */
+        #save-preview {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        #save-preview img {
+            max-width: 100%;
+            max-height: 70vh;
+            border: 2px solid white;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .close-btn { background: #666; color: white; width: auto; padding: 10px 40px; margin-top: 20px; }
+
         h3 { margin-top: 0; color: #f472b6; border-bottom: 2px solid #fdf2f8; padding-bottom: 10px; }
         .usage-list { padding-left: 20px; line-height: 1.6; }
-        .usage-note { font-size: 0.85em; color: #666; }
         footer { margin-top: 40px; padding: 20px; font-size: 0.8em; color: #999; text-align: center; width: 100%; }
     </style>
 </head>
@@ -91,25 +115,38 @@
                 </div>
             </div>
         </div>
+        
         <div id="editor-container">
             <img id="base-image" src="" alt="">
             <img id="overlay-image" src="image1.png" alt="frame">
         </div>
-        <button id="save-btn" class="btn-save">完成画像を表示して保存</button>
+        
+        <button id="save-btn" class="btn-save">完成画像を作成する</button>
     </div>
+
     <div class="info-section">
         <h3>使い方</h3>
         <ul class="usage-list">
-            <li><strong>① 画像を選びます</strong></li>
-            <li><strong>② フレームを選びます</strong></li>
-            <li><strong>③ 写真を調整します</strong>
-                <div class="usage-note">枠内をドラッグ（スワイプ）して移動、スライダーで拡大縮小できます。</div>
+            <li><strong>① 写真とフレームを選ぶ</strong></li>
+            <li><strong>② 写真を調整する</strong><br>
+                <small>ドラッグで移動、スライダーで拡大縮小できます。</small>
             </li>
-            <li><strong>④ 保存します</strong>
-                <div class="usage-note">ボタンを押すと別タブが開くので、画像を<strong>長押し</strong>して保存してください。</div>
+            <li><strong>③ 画像を作成する</strong><br>
+                <small>ボタンを押すと保存用画面が開きます。</small>
+            </li>
+            <li><strong>④ 保存する</strong><br>
+                <small>表示された画像を<strong>長押し</strong>して保存してください。</small>
             </li>
         </ul>
     </div>
+</div>
+
+<div id="save-preview">
+    <img id="final-image" src="" alt="完成画像">
+    <p style="margin-top:15px; font-weight:bold; background:#f472b6; padding:8px 20px; border-radius:20px;">
+        画像を長押しして保存してね！
+    </p>
+    <button class="close-btn" onclick="document.getElementById('save-preview').style.display='none'">エディタに戻る</button>
 </div>
 
 <footer>
@@ -125,11 +162,10 @@
     const sizeControls = document.getElementById('size-controls');
     const saveBtn = document.getElementById('save-btn');
     const frameSelector = document.getElementById('frame-selector');
+    const savePreview = document.getElementById('save-preview');
+    const finalImg = document.getElementById('final-image');
 
-    let posX = 0, posY = 0;
-    let imgScale = 1;
-    let isDragging = false;
-    let startX, startY;
+    let posX = 0, posY = 0, imgScale = 1, isDragging = false, startX, startY;
 
     frameSelector.addEventListener('change', () => { overlayImg.src = frameSelector.value; });
 
@@ -150,14 +186,8 @@
         reader.readAsDataURL(e.target.files[0]);
     });
 
-    bgScaleSlider.addEventListener('input', () => {
-        imgScale = bgScaleSlider.value / 100;
-        updateTransform();
-    });
-
-    sizeSlider.addEventListener('input', () => {
-        overlayImg.style.width = sizeSlider.value + "%";
-    });
+    bgScaleSlider.addEventListener('input', () => { imgScale = bgScaleSlider.value / 100; updateTransform(); });
+    sizeSlider.addEventListener('input', () => { overlayImg.style.width = sizeSlider.value + "%"; });
 
     container.addEventListener('pointerdown', (e) => {
         if (baseImg.src === "") return;
@@ -180,29 +210,23 @@
         baseImg.style.transform = `translate(${posX - baseImg.width/2}px, ${posY - baseImg.height/2}px) scale(${imgScale})`;
     }
 
-    // 保存（別タブ展開）ロジック
     saveBtn.addEventListener('click', () => {
         const finalCanvas = document.createElement('canvas');
         const ctx = finalCanvas.getContext('2d');
-        
-        // 出力解像度 (1000x1000)
         const outputSize = 1000;
         finalCanvas.width = outputSize;
         finalCanvas.height = outputSize;
-        
         const renderScale = outputSize / container.offsetWidth;
-        
+
         const img = new Image();
         img.src = baseImg.src;
         img.onload = () => {
-            // 背景描画
             ctx.save();
             ctx.translate(posX * renderScale, posY * renderScale);
             ctx.scale(imgScale * renderScale, imgScale * renderScale);
             ctx.drawImage(img, -img.width / 2, -img.height / 2);
             ctx.restore();
-            
-            // フレーム描画
+
             const fImg = new Image();
             fImg.src = overlayImg.src;
             fImg.onload = () => {
@@ -210,56 +234,10 @@
                 const dw = outputSize * fScale;
                 const dh = outputSize * fScale;
                 ctx.drawImage(fImg, (outputSize - dw) / 2, (outputSize - dh) / 2, dw, dh);
-                
-                // 画像データ変換
-                const dataUrl = finalCanvas.toDataURL('image/png');
-                
-                // 新しいタブで表示
-                const newWindow = window.open();
-                if (newWindow) {
-                    newWindow.document.write(`
-                        <html>
-                            <head>
-                                <title>画像を長押しして保存</title>
-                                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                                <style>
-                                    body { 
-                                        margin: 0; 
-                                        display: flex; 
-                                        flex-direction: column; 
-                                        align-items: center; 
-                                        justify-content: center; 
-                                        background: #1a1a1a; 
-                                        color: white; 
-                                        font-family: sans-serif; 
-                                        min-height: 100vh;
-                                    }
-                                    img { 
-                                        max-width: 90%; 
-                                        height: auto; 
-                                        border: 2px solid #fff;
-                                        box-shadow: 0 0 20px rgba(0,0,0,0.5); 
-                                    }
-                                    .msg { 
-                                        margin-top: 20px; 
-                                        padding: 10px 20px; 
-                                        background: #f472b6; 
-                                        border-radius: 30px; 
-                                        font-weight: bold;
-                                        font-size: 14px;
-                                    }
-                                </style>
-                            </head>
-                            <body>
-                                <img src="${dataUrl}" alt="アンバサダー画像">
-                                <div class="msg">画像を長押しして保存してくだちい。</div>
-                            </body>
-                        </html>
-                    `);
-                    newWindow.document.close();
-                } else {
-                    alert("ポップアップがブロックされました。ブラウザの設定で許可するか、Safari/Chromeなどの標準ブラウザで開き直してください。");
-                }
+
+                // 完成した画像をプレビュー画面にセットして表示
+                finalImg.src = finalCanvas.toDataURL('image/png');
+                savePreview.style.display = 'flex';
             };
         };
     });
